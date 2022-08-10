@@ -1,0 +1,112 @@
+---
+title: "Analysis of Microarray Design #1 data for Cancer SNV paper"
+output: html_notebook
+---
+
+# Load Libraries
+```{r}
+
+library(RColorBrewer)
+library(ggplot2)
+library(tidyverse)
+#library(magrittr)
+library(dplyr)
+library(Biostrings)
+library(cowplot)
+library(umap)
+library(plyr)
+
+#My custom functions
+source("./R/cancer_snv_functions.R")
+source(file="./R/corec_motifs_TWSexpanded.R")
+
+```
+
+# READ DATA FILES
+```{r} 
+### READ DATA FILES
+
+    #READ merged PBM and MPRA data
+    dpm <- read.table(file="./DATA/v2_PBM_all_MPRA.dat", header=T, sep="\t")
+    dpm = na.omit(dpm) # MPRA file had missing values - removes lines with these missing values
+
+        #Numbers of probes in PBM/MPRA data
+        #
+        # TOTAL                   = 1286
+        #   cancer_snv_sig        = 1195
+        #   no_predicted_binding  = 75
+        #   literature_snv        = 9
+        #   literature_genes      = 7
+    
+    
+    #READ PBM data
+    dp<- read.table(file="./DATA/v2_PBM_all.dat",header=T, sep="\t")   #PBM data without MPRA data
+    
+        #Numbers of probes in PBM data
+        # TOTAL                   = 2965
+        #   cancer_snv_sig        = 2557  
+        #   no_predicted_binding  =  384
+        #   literature_snv        =   17
+        #   literature_genes      =    7  
+    
+
+    #READ PWM/TF INFO/PROMOTER annotation data
+    d.pwm = get_pwm_info()  # Read TFA-BT PWM prediction data
+    
+    
+```
+
+# FILTER DATA:: Identify Signficantly different SNP_id_alleles
+```{r}
+ ### FILTER DATA
+
+    ARG_zscore_cut = 2.0 #Defines a Z-score cutoff below which PBM data are not considered
+    ARG_delta_cut = 2.0 #Defines a Z-score cutoff above which PBM REF/non-REF must differ
+    ARG_pval_cut =  3.0 #Defines a cutoff below which PWM is considered NOT similar
+    ARG_skewFDR_cut = 1.30103   # -log10(0.05) = 1.30103
+
+    ### FILTER DATA based on significance cutoffs
+    #
+    
+    dp.filter = filter_pbm_data(dp,ARG_zscore_cut,ARG_delta_cut,ARG_pval_cut) #PBM only data
+
+
+    dpm.filter = filter_pbm_mpra_data(dpm,ARG_zscore_cut,ARG_delta_cut,ARG_pval_cut,ARG_skewFDR_cut) #PBM+MPRA data
+    length(unique(dpm.filter$SNP_id_allele)) #361 / 1286
+
+
+    filename= paste0(dir,"./v2_emVar_and_bmVar.txt")
+    write.table(dpm.filter,filename,col.names=TRUE,row.names=FALSE,sep="\t")  
+    
+    filename= paste0(dir,"./v2_bmVar.txt")
+    write.table(dp.filter,filename,col.names=TRUE,row.names=FALSE,sep="\t")  
+    
+    
+      #### Write Supplementary Files/Tables for Paper ####
+      #
+      #
+      
+      dp.simple = dp %>%
+        select(     c(SNP_id,
+                      SNP_allele,
+                      analysis_type,
+                      rep,
+                      cell,
+                      PBM_exp,
+                      PBM_array,
+                      mean_REF_3,
+                      mean_SNP_3,
+                      delta_3,
+                      REF_o1_.5,REF_o1_0,REF_o1_5,
+                      REF_o2_.5,REF_o2_0,REF_o2_5,
+                      SNP_o1_.5,SNP_o1_0,SNP_o1_5,
+                      SNP_o2_.5,SNP_o2_0,SNP_o2_5,
+                      neg_log10_pval_fisher_ttest_3))
+        
+        filename = "/usr2/faculty/tsiggers/research/2020_Cancer_SNVs/SNV_analysis/Supplementary_Table_V2_processed_PBM_data.txt" 
+        write.table(dp.simple,file=filename,row.names=FALSE, col.names=TRUE,sep="\t",quote=FALSE) #Write data to file
+      
+      #
+      ########
+    
+```
