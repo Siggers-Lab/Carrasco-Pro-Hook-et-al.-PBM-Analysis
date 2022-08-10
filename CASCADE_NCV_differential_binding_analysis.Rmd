@@ -1,5 +1,5 @@
 ---
-title: "Analysis of Microarray Design #1 data for Cancer SNV paper"
+title: "Analysis of the Microarray Design #1 data for Cancer SNV paper"
 output: html_notebook
 ---
 
